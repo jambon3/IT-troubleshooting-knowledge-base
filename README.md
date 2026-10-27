@@ -5,38 +5,6 @@ A technical knowledge base documenting IT infrastructure troubleshooting, root-c
 
 This repository serves as a centralized reference for diagnosing and resolving common IT infrastructure issues, improving operational efficiency, and documenting repeatable troubleshooting procedures.
 
-## Areas of Expertise
-
-- **VMware vSphere / ESXi** — Host connectivity, certificates, networking, and configuration issues.
-- **Veeam Backup & Replication** — Backup failures, restore procedures, retention policies, and repository management.
-- **Networking** — IP conflicts, DNS resolution, connectivity testing, and network troubleshooting.
-- **Microsoft 365 & Entra ID** — Identity management, authentication, access control, and administration.
-- **Microsoft Azure** — Cloud administration, resource management, security, and troubleshooting.
-- **Intune & Endpoint Security** — Device compliance, BitLocker encryption, and endpoint management.
-- **Cybersecurity** — Security investigations, certificate validation, access control, and remediation.
-
-## Repository Structure
-
-```text
-it-troubleshooting-knowledge-base/
-├── README.md
-├── vmware/
-│   └── uplink-ip-conflict/
-│       └── README.md
-├── veeam/
-│   └── backup-job-failures/
-│       └── README.md
-├── networking/
-│   └── connectivity-issues/
-│       └── README.md
-├── microsoft-365-azure/
-│   └── identity-and-device-management/
-│       └── README.md
-└── cybersecurity/
-    └── security-investigations/
-        └── README.md
-```
-
 *Folders will be added as troubleshooting reports are created.*
 
 ## Troubleshooting Methodology
