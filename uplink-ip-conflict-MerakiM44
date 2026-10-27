@@ -1,0 +1,70 @@
+Meraki MR44 — Uplink IP conflict troubleshooting report
+Issue: Cisco Meraki MR44 upstairs-lab reports “Uplink IP address in conflict with another device.”
+The steps below summarize what we checked, what each result means, and what remains to be done. The original conflict was traced to the MR44 using the same IP address as the production Perforce Swarm server.
+1. Confirmed network details
+Component	Confirmed details
+Access point	Cisco Meraki MR44, upstairs-lab
+MR44 MAC address	**-**-**-**-**-**
+Original MR44 IP	192.168.203.92 via DHCP
+Perforce Swarm server	P4SWARM
+Swarm IP	192.168.203.92 (static)
+Gateway	192.168.203.29
+DHCP server	DHCPserver, 192.168.***.**
+DNS servers	192.168.***.*, 10.2.0.***
+Subnet	192.168.***.0/24
+DHCP range	192.168.203.60–192.168.203.199
+Root cause identified: The MR44 received .92 from DHCP, while the Swarm server was configured with the same address statically. Two devices cannot safely use the same IPv4 address on the same network.
+2. Troubleshooting steps completed
+Step 1 — Identified the duplicate IP
+Confirmed
+Identified that the MR44's DHCP address .92 conflicts with the Swarm server's static IP .92.
+Step 2 — Identified the DHCP server
+Confirmed MONVAPPMDF101 (192.168.203.27) is running the Windows DHCP Server service. The scope is 192.168.203.0/24, with a range of .60–.199 and seven-day leases.
+Step 3 — Checked the DHCP lease for .92
+Initially, .92 was leased to the MR44 MAC E4-55-A8-D4-C4-C1. Later, .92 no longer appeared in the DHCP lease output. The Dashboard continued to show .92 via DHCP, so the conflict was not conclusively resolved.
+Step 4 — Investigated candidate .91
+Ping responded, and ARP showed MAC 00-50-56-8A-1A-1B, indicating a likely VMware virtual machine. We correctly avoided assigning .91 to the MR44.
+Step 5 — Investigated candidate .120
+The DHCP query returned no lease for .120. Ping returned Destination host unreachable from .27, and the local ARP query returned no entry. These results did not prove that .120 was unused, but we proceeded to reserve it.
+Step 6 — Created the DHCP reservation
+Successfully created and verified the reservation:
+Add-DhcpServerv4Reservation `
+  -ComputerName MONVAPPMDF101 `
+  -ScopeId 192.168.203.0 `
+  -IPAddress 192.168.203.120 `
+  -ClientId "E4-55-A8-D4-C4-C1" `
+  -Name "Meraki-MR44-Upstairs-Lab" `
+  -Description "Reserved IP for Meraki MR44"
+Verification showed .120 associated with the correct MR44 MAC.
+Step 7 — Checked DHCP exclusions
+Get-DhcpServerv4ExclusionRange returned no entries. No exclusions were reported for the scope.
+Step 8 — Rebooted the MR44
+Rebooted the access point from the Meraki Dashboard. The DHCP reservation remained InactiveReservation, indicating that the DHCP server had not recorded an active lease for .120.
+Step 9 — Attempted static IP configuration
+The edit form showed Static IP and .120, but the main Dashboard page continued to report .92 via DHCP. Ping to .120 remained unsuccessful.
+Cisco's documentation says to save the static configuration and explains that an AP can fall back to DHCP if it cannot reach the configured gateway. We have not yet verified that the static configuration was successfully applied. 
+ 
+Cisco Meraki Documentation
+3. Current status
+Not yet confirmed resolved
+The original warning reportedly disappeared, but that alone does not confirm the IP conflict is fixed.
+DHCP reservation for .120
+Created successfully
+Done
+MR44 actually using .120
+Dashboard still showed .92 via DHCP at last check
+Unverified
+Swarm server preserved at .92
+No change to its configured IP was made
+Unchanged
+DHCP exclusion for .92
+Not created
+Pending
+4. Recommended next steps
+1.	Confirm the MR44 configuration was saved. In Dashboard, open Wireless → Monitor → Access points → upstairs-lab, edit the IP settings, and ensure you click Save. Refresh the device page and check whether it still shows .92 via DHCP.
+2.	If it keeps reverting to DHCP, check the static IP settings, VLAN tagging, and gateway reachability. Leave the VLAN unchanged unless you have confirmed the correct VLAN for the AP. Cisco's static IP configuration guide explains the expected behavior.
+3.	Verify .120 is unused in your IP address inventory or network device records before committing to it.
+4.	Once the MR44 is confirmed using .120, exclude .92 from the DHCP pool to protect the Swarm server's static address. Coordinate this carefully, since the current DHCP scope includes .92.
+5.	Test the MR44's connectivity and verify the Swarm server remains reachable at .92. Confirm the conflict warning stays cleared.
+Important: The safest next action is to resolve why the MR44 isn't applying .120, rather than creating more reservations or rebooting it repeatedly.
+
