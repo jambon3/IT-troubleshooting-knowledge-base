@@ -253,11 +253,8 @@ The following items remain before the incident can be considered resolved:
 
 ## 7. Current status
 
-**Mitigation attempted — pending verification.**
-
-The duplicate-IP root cause was identified, and a DHCP reservation was created for an alternative address. However, the reservation's inactive state and the unconfirmed IP configuration mean the final resolution has not yet been demonstrated.
-
-The incident should only be marked **Resolved** after the access point's active address and connectivity are verified and the conflict warning is confirmed cleared.
+The duplicate-IP root cause was identified, and a DHCP reservation was created for an alternative address. The Meraki Dashboard has since been checked, and the access point is pointing to the intended replacement IP address.
+Final verification should confirm that the access point is reachable at the replacement address, the production server remains reachable at its original address, and the duplicate-IP warning remains cleared.
 
 ## 8. Lessons learned
 
