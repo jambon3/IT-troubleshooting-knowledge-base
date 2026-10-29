@@ -1,4 +1,4 @@
-This is a Microsoft Entra ID SAML Signing Certificate renewal for UltiPro (UKG), used for Single Sign-On (SSO). It is specifically related to authentication between Microsoft Entra ID (Azure AD) and your company's UltiPro application.
+This is a Microsoft Entra ID SAML Signing Certificate renewal for APP, used for Single Sign-On (SSO). It is specifically related to authentication between Microsoft Entra ID (Azure AD) and your company's APP application.
 
 ### Please renew your application certificate.
 
