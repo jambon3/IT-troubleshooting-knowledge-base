@@ -3,3 +3,8 @@
 Install-Module -Name PnP.PowerShell -Scope CurrentUser
 
 Import-Module PnP.PowerShell
+
+
+# Verify:
+
+Get-Module -ListAvailable PnP.PowerShell
