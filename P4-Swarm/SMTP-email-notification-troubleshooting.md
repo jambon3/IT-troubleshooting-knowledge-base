@@ -1,3 +1,5 @@
+# *******Sanitized********
+
 # Perforce Swarm — SMTP Email Notification Troubleshooting
 
 **Incident ID:** APP-EMAIL-001  
