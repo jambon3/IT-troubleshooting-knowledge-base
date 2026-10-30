@@ -1,0 +1,4 @@
+# 2. Connect to SharePoint Admin Center
+
+Connect-SPOService `
+    -Url "https://<tenant>-admin.sharepoint.com"
