@@ -1,0 +1,679 @@
+# connect to sharepoint
+
+Get-PnPWeb
+
+Connect-PnPOnline `
+    -Url "https://inveristraining.sharepoint.com/sites/CA-Montreal-Engineering" `
+    -Interactive `
+    -ClientId "2155ec4c-0f84-4b96-a19e-f8a6ba1de320"
+
+
+
+
+# the script
+
+# ============================================================
+# SHAREPOINT -> LOCAL FILE TRANSFER
+# CA-Montreal-Engineering
+# ============================================================
+
+# ============================================================
+# CONFIGURATION
+# ============================================================
+
+$SiteUrl = "https://inveristraining.sharepoint.com/sites/CA-Montreal-Engineering"
+
+$LibraryName = "Documents"
+
+$Destination = "M:\FromSharePoint\Documents\"
+
+$ClientId = "2155ec4c-0f84-4b96-a19e-f8a6ba1de320"
+
+$LogFile = "M:\FromSharePoint\Documents\Engineering\SharePointTransfer.log"
+
+
+# ============================================================
+# CHECK PNP POWERSHELL
+# ============================================================
+
+if (!(Get-Module -ListAvailable -Name PnP.PowerShell)) {
+
+    Write-Host ""
+    Write-Host "PnP.PowerShell is not installed." -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Install it with:" -ForegroundColor Yellow
+    Write-Host "Install-Module PnP.PowerShell -Scope CurrentUser" -ForegroundColor Cyan
+    Write-Host ""
+
+    exit
+}
+
+Import-Module PnP.PowerShell
+
+
+# ============================================================
+# CHECK DESTINATION
+# ============================================================
+
+Write-Host ""
+Write-Host "Checking destination..." -ForegroundColor Cyan
+
+if (!(Test-Path "M:\")) {
+
+    Write-Host ""
+    Write-Host "ERROR: M: drive is not available." -ForegroundColor Red
+    Write-Host ""
+    exit
+}
+
+
+if (!(Test-Path "M:\FromSharePoint\Documents")) {
+
+    Write-Host ""
+    Write-Host "ERROR: M:\FromSharePoint\Documents does not exist." -ForegroundColor Red
+    Write-Host ""
+    exit
+}
+
+
+# ============================================================
+# CREATE ENGINEERING FOLDER
+# ============================================================
+
+if (!(Test-Path $Destination)) {
+
+    New-Item `
+        -ItemType Directory `
+        -Path $Destination `
+        -Force `
+        -ErrorAction Stop | Out-Null
+}
+
+
+# ============================================================
+# CREATE LOG DIRECTORY
+# ============================================================
+
+$LogDirectory = Split-Path $LogFile -Parent
+
+if (!(Test-Path $LogDirectory)) {
+
+    New-Item `
+        -ItemType Directory `
+        -Path $LogDirectory `
+        -Force | Out-Null
+}
+
+
+# ============================================================
+# LOGGING FUNCTION
+# ============================================================
+
+function Write-TransferLog {
+
+    param(
+        [string]$Message
+    )
+
+    $Timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+
+    Add-Content `
+        -Path $LogFile `
+        -Value "$Timestamp`t$Message"
+}
+
+
+# ============================================================
+# CONNECT TO SHAREPOINT
+# ============================================================
+
+Write-Host ""
+Write-Host "============================================================" -ForegroundColor Cyan
+Write-Host "CONNECTING TO SHAREPOINT" -ForegroundColor Cyan
+Write-Host "============================================================" -ForegroundColor Cyan
+
+Write-Host ""
+Write-Host "Site:" -ForegroundColor DarkGray
+Write-Host $SiteUrl -ForegroundColor White
+
+Write-Host ""
+Write-Host "Destination:" -ForegroundColor DarkGray
+Write-Host $Destination -ForegroundColor White
+
+Write-Host ""
+
+try {
+
+    Connect-PnPOnline `
+        -Url $SiteUrl `
+        -Interactive `
+        -ClientId $ClientId `
+        -ErrorAction Stop
+
+}
+catch {
+
+    Write-Host ""
+    Write-Host "FAILED TO CONNECT TO SHAREPOINT" -ForegroundColor Red
+    Write-Host $_.Exception.Message -ForegroundColor Red
+    exit
+}
+
+
+Write-Host ""
+Write-Host "SharePoint connection successful." -ForegroundColor Green
+
+
+# ============================================================
+# TEST CONNECTION
+# ============================================================
+
+try {
+
+    $Web = Get-PnPWeb -ErrorAction Stop
+
+}
+catch {
+
+    Write-Host ""
+    Write-Host "SharePoint connection test failed." -ForegroundColor Red
+    Write-Host $_.Exception.Message -ForegroundColor Red
+    exit
+}
+
+
+Write-Host ""
+Write-Host "Site Title:" -ForegroundColor DarkGray
+Write-Host $Web.Title -ForegroundColor White
+
+
+# ============================================================
+# GET DOCUMENT LIBRARY
+# ============================================================
+
+Write-Host ""
+Write-Host "Getting SharePoint library..." -ForegroundColor Cyan
+Write-Host "Library: $LibraryName"
+
+try {
+
+    $Library = Get-PnPList `
+        -Identity $LibraryName `
+        -ErrorAction Stop
+
+}
+catch {
+
+    Write-Host ""
+    Write-Host "ERROR: SharePoint library was not found." -ForegroundColor Red
+    Write-Host $_.Exception.Message -ForegroundColor Red
+
+    Write-Host ""
+    Write-Host "Available document libraries:" -ForegroundColor Yellow
+
+    Get-PnPList |
+        Where-Object {
+            $_.BaseTemplate -eq 101 -and
+            $_.Hidden -eq $false
+        } |
+        Select-Object Title |
+        Format-Table -AutoSize
+
+    exit
+}
+
+
+Write-Host ""
+Write-Host "Library found:" -ForegroundColor Green
+Write-Host $Library.Title
+
+
+# ============================================================
+# GET LIBRARY ROOT
+# ============================================================
+
+$LibraryRootUrl = $Library.RootFolder.ServerRelativeUrl
+
+
+Write-Host ""
+Write-Host "SharePoint library root:" -ForegroundColor DarkGray
+Write-Host $LibraryRootUrl
+
+
+# ============================================================
+# GET SHAREPOINT ITEMS
+# ============================================================
+
+Write-Host ""
+Write-Host "Retrieving files from SharePoint..." -ForegroundColor Cyan
+Write-Host "Please wait..."
+Write-Host ""
+
+try {
+
+    $Items = Get-PnPListItem `
+        -List $Library `
+        -PageSize 1000 `
+        -Fields "FileLeafRef", "FileRef", "FSObjType" `
+        -ErrorAction Stop
+
+}
+catch {
+
+    Write-Host ""
+    Write-Host "ERROR: Could not retrieve SharePoint files." -ForegroundColor Red
+    Write-Host $_.Exception.Message -ForegroundColor Red
+    exit
+}
+
+
+Write-Host ""
+Write-Host "SharePoint items retrieved:" -ForegroundColor Green
+Write-Host $Items.Count
+
+
+# ============================================================
+# COUNTERS
+# ============================================================
+
+$TotalFiles = 0
+
+$SkippedFiles = 0
+
+$DownloadedFiles = 0
+
+$FailedFiles = 0
+
+$SkippedBytes = [Int64]0
+
+$DownloadedBytes = [Int64]0
+
+$FailedBytes = [Int64]0
+
+$SharePointTotalBytes = [Int64]0
+
+
+# ============================================================
+# START LOG
+# ============================================================
+
+Write-TransferLog ""
+
+Write-TransferLog "============================================================"
+
+Write-TransferLog "TRANSFER STARTED"
+
+Write-TransferLog "Site: $SiteUrl"
+
+Write-TransferLog "Library: $LibraryName"
+
+Write-TransferLog "Library Root: $LibraryRootUrl"
+
+Write-TransferLog "Destination: $Destination"
+
+Write-TransferLog "============================================================"
+
+
+# ============================================================
+# PROCESS FILES
+# ============================================================
+
+foreach ($Item in $Items) {
+
+    # --------------------------------------------------------
+    # ONLY PROCESS FILES
+    # --------------------------------------------------------
+
+    if ($Item.FileSystemObjectType -ne "File") {
+
+        continue
+    }
+
+
+    $TotalFiles++
+
+
+    # Reset variables
+
+    $FileName = ""
+
+    $RelativePathWindows = ""
+
+    $SharePointSize = [Int64]0
+
+
+    try {
+
+        # ----------------------------------------------------
+        # GET FILE INFORMATION
+        # ----------------------------------------------------
+
+        $File = Get-PnPProperty `
+            -ClientObject $Item `
+            -Property File
+
+
+        $SharePointPath = $File.ServerRelativeUrl
+
+        $FileName = $File.Name
+
+        $SharePointSize = [Int64]$File.Length
+
+
+        $SharePointTotalBytes += $SharePointSize
+
+
+        # ----------------------------------------------------
+        # CALCULATE RELATIVE PATH
+        # ----------------------------------------------------
+
+        $RelativePath = $SharePointPath.Substring(
+            $LibraryRootUrl.Length
+        ).TrimStart("/")
+
+
+        $RelativePathWindows = $RelativePath -replace "/", "\"
+
+
+        # ----------------------------------------------------
+        # LOCAL FILE PATH
+        # ----------------------------------------------------
+
+        $DestinationFile = Join-Path `
+            $Destination `
+            $RelativePathWindows
+
+
+        $DestinationFolder = Split-Path `
+            $DestinationFile `
+            -Parent
+
+
+        # ----------------------------------------------------
+        # CREATE LOCAL FOLDER
+        # ----------------------------------------------------
+
+        if (!(Test-Path $DestinationFolder)) {
+
+            New-Item `
+                -ItemType Directory `
+                -Path $DestinationFolder `
+                -Force `
+                -ErrorAction Stop | Out-Null
+        }
+
+
+        # ----------------------------------------------------
+        # CHECK IF FILE ALREADY EXISTS
+        # ----------------------------------------------------
+
+        if (Test-Path $DestinationFile) {
+
+            $ExistingFile = Get-Item `
+                $DestinationFile `
+                -ErrorAction Stop
+
+
+            # Same size = skip
+
+            if ($ExistingFile.Length -eq $SharePointSize) {
+
+                $SkippedFiles++
+
+                $SkippedBytes += $SharePointSize
+
+
+                Write-Host ""
+                Write-Host "[SKIP - COMPLETE]" -ForegroundColor DarkGray
+                Write-Host $RelativePathWindows -ForegroundColor DarkGray
+                Write-Host "Size: $SharePointSize bytes" -ForegroundColor DarkGray
+
+
+                Write-TransferLog `
+                    "SKIP`t$RelativePathWindows`t$SharePointSize"
+
+
+                continue
+            }
+
+
+            # ------------------------------------------------
+            # FILE SIZE DIFFERENT
+            # ------------------------------------------------
+
+            Write-Host ""
+            Write-Host "[INCOMPLETE - REDOWNLOAD]" -ForegroundColor Yellow
+
+            Write-Host $RelativePathWindows -ForegroundColor Yellow
+
+            Write-Host "SharePoint: $SharePointSize bytes" -ForegroundColor Yellow
+
+            Write-Host "Local:      $($ExistingFile.Length) bytes" -ForegroundColor Yellow
+
+
+            Remove-Item `
+                $DestinationFile `
+                -Force `
+                -ErrorAction Stop
+        }
+
+
+        # ----------------------------------------------------
+        # DOWNLOAD FILE
+        # ----------------------------------------------------
+
+        Write-Host ""
+        Write-Host "[DOWNLOAD]" -ForegroundColor Green
+
+        Write-Host $RelativePathWindows -ForegroundColor White
+
+        Write-Host "SharePoint:" -ForegroundColor DarkGray
+
+        Write-Host $SharePointPath -ForegroundColor DarkGray
+
+        Write-Host "Local:" -ForegroundColor DarkGray
+
+        Write-Host $DestinationFile -ForegroundColor DarkGray
+
+
+        Get-PnPFile `
+            -Url $SharePointPath `
+            -Path $DestinationFolder `
+            -FileName $FileName `
+            -AsFile `
+            -Force `
+            -ErrorAction Stop
+
+
+        # ----------------------------------------------------
+        # VERIFY FILE EXISTS
+        # ----------------------------------------------------
+
+        if (!(Test-Path $DestinationFile)) {
+
+            throw "File not found after download"
+        }
+
+
+        # ----------------------------------------------------
+        # VERIFY FILE SIZE
+        # ----------------------------------------------------
+
+        $DownloadedFile = Get-Item `
+            $DestinationFile `
+            -ErrorAction Stop
+
+
+        if ($DownloadedFile.Length -ne $SharePointSize) {
+
+            throw "SIZE MISMATCH - SharePoint=$SharePointSize Local=$($DownloadedFile.Length)"
+        }
+
+
+        # ----------------------------------------------------
+        # SUCCESS
+        # ----------------------------------------------------
+
+        $DownloadedFiles++
+
+        $DownloadedBytes += $DownloadedFile.Length
+
+
+        Write-Host ""
+        Write-Host "[OK]" -ForegroundColor Green
+
+        Write-Host $FileName -ForegroundColor Green
+
+        Write-Host "Verified size: $($DownloadedFile.Length) bytes" -ForegroundColor Green
+
+
+        Write-TransferLog `
+            "SUCCESS`t$RelativePathWindows`t$SharePointSize"
+    }
+
+
+    catch {
+
+        $FailedFiles++
+
+        $FailedBytes += $SharePointSize
+
+
+        Write-Host ""
+        Write-Host "[ERROR]" -ForegroundColor Red
+
+        Write-Host $FileName -ForegroundColor Red
+
+        Write-Host $_.Exception.Message -ForegroundColor Red
+
+        Write-Host "Continuing to next file..." -ForegroundColor Yellow
+
+
+        Write-TransferLog `
+            "ERROR`t$RelativePathWindows`t$SharePointSize`t$($_.Exception.Message)"
+    }
+
+
+    # ========================================================
+    # PROGRESS EVERY 100 FILES
+    # ========================================================
+
+    if ($TotalFiles % 100 -eq 0) {
+
+        Write-Host ""
+
+        Write-Host "============================================================" `
+            -ForegroundColor Cyan
+
+        Write-Host "PROGRESS" `
+            -ForegroundColor Cyan
+
+        Write-Host "Files processed : $TotalFiles"
+
+        Write-Host "Downloaded      : $DownloadedFiles"
+
+        Write-Host "Skipped         : $SkippedFiles"
+
+        Write-Host "Failed          : $FailedFiles"
+
+        Write-Host ""
+
+        Write-Host "SharePoint size : $([math]::Round($SharePointTotalBytes / 1GB, 2)) GB"
+
+        Write-Host "Downloaded      : $([math]::Round($DownloadedBytes / 1GB, 2)) GB"
+
+        Write-Host "Skipped         : $([math]::Round($SkippedBytes / 1GB, 2)) GB"
+
+        Write-Host "Failed          : $([math]::Round($FailedBytes / 1GB, 2)) GB"
+
+        Write-Host ""
+
+        Write-Host "============================================================" `
+            -ForegroundColor Cyan
+    }
+}
+
+
+# ============================================================
+# FINAL SUMMARY
+# ============================================================
+
+Write-Host ""
+
+Write-Host "============================================================" `
+    -ForegroundColor Cyan
+
+Write-Host "TRANSFER COMPLETE" `
+    -ForegroundColor Cyan
+
+Write-Host "============================================================" `
+    -ForegroundColor Cyan
+
+Write-Host ""
+
+Write-Host "Total files processed : $TotalFiles"
+
+Write-Host "Downloaded            : $DownloadedFiles" `
+    -ForegroundColor Green
+
+Write-Host "Skipped               : $SkippedFiles" `
+    -ForegroundColor DarkGray
+
+Write-Host "Failed                : $FailedFiles" `
+    -ForegroundColor Red
+
+Write-Host ""
+
+Write-Host "SharePoint total      : $([math]::Round($SharePointTotalBytes / 1GB, 2)) GB"
+
+Write-Host "Downloaded            : $([math]::Round($DownloadedBytes / 1GB, 2)) GB"
+
+Write-Host "Skipped               : $([math]::Round($SkippedBytes / 1GB, 2)) GB"
+
+Write-Host "Failed                : $([math]::Round($FailedBytes / 1GB, 2)) GB"
+
+Write-Host ""
+
+Write-Host "Destination:" -ForegroundColor Cyan
+
+Write-Host $Destination -ForegroundColor White
+
+Write-Host ""
+
+Write-Host "Log file:" -ForegroundColor Cyan
+
+Write-Host $LogFile -ForegroundColor White
+
+Write-Host ""
+
+Write-Host "============================================================" `
+    -ForegroundColor Cyan
+
+
+# ============================================================
+# FINAL LOG
+# ============================================================
+
+Write-TransferLog ""
+
+Write-TransferLog "============================================================"
+
+Write-TransferLog "TRANSFER COMPLETE"
+
+Write-TransferLog "Total files: $TotalFiles"
+
+Write-TransferLog "Downloaded: $DownloadedFiles"
+
+Write-TransferLog "Skipped: $SkippedFiles"
+
+Write-TransferLog "Failed: $FailedFiles"
+
+Write-TransferLog "SharePoint bytes: $SharePointTotalBytes"
+
+Write-TransferLog "Downloaded bytes: $DownloadedBytes"
+
+Write-TransferLog "Skipped bytes: $SkippedBytes"
+
+Write-TransferLog "Failed bytes: $FailedBytes"
+
+Write-TransferLog "============================================================"
