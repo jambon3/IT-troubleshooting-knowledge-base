@@ -1,0 +1,10 @@
+# 5. Test SharePoint Connection
+
+Connect-PnPOnline `
+    -Url "https://tenant.sharepoint.com/sites/SiteName" `
+    -Interactive `
+    -ClientId "<ClientId>"
+
+
+# Verify:
+Get-PnPWeb
