@@ -1,3 +1,5 @@
+# Sanitized
+
 # Incident Report: Perforce Swarm Authentication Failure
 
 **Incident date:** October 29, 2026  
