@@ -1,0 +1,6 @@
+# 4. Create / Register PnP Application
+
+Register-PnPEntraApp `
+    -ApplicationName "PnP PowerShell" `
+    -Tenant "<tenant>.onmicrosoft.com" `
+    -Interactive
