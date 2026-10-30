@@ -1,0 +1,6 @@
+# 7. Validate Files Downloaded
+# View most recent downloaded files:
+
+Get-ChildItem "M:\FromSharePoint\Documents" -Recurse |
+Sort-Object LastWriteTime -Descending |
+Select-Object -First 30 Name, Length, LastWriteTime
