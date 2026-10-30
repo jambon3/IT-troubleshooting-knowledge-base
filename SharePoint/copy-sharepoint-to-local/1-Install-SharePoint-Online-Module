@@ -1,0 +1,5 @@
+# One-Time Setup (or after rebuilding a server)
+
+Install-Module -Name Microsoft.Online.SharePoint.PowerShell -Scope CurrentUser
+
+Import-Module Microsoft.Online.SharePoint.PowerShell
