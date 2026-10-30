@@ -1,0 +1,5 @@
+# 3. Install PnP PowerShell
+
+Install-Module -Name PnP.PowerShell -Scope CurrentUser
+
+Import-Module PnP.PowerShell
