@@ -1,0 +1,7 @@
+# 6. Run SharePoint Synchronization
+
+cd C:\Scripts
+
+# Run the synchronization:
+
+.\SharePoint-Sync.ps1
