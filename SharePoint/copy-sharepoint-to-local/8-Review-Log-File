@@ -1,0 +1,4 @@
+# 8. Review Log File
+# Open log:
+
+Get-Content "M:\FromSharePoint\Documents\Engineering\SharePointTransfer.log"
