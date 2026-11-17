@@ -385,25 +385,6 @@ for better efficiency and performance.
 
 ---
 
-# Interview Question
-
-### Question
-
-A file is 1 KB in size.
-
-The disk is formatted using a 4 KB cluster size.
-
-How much disk space is consumed?
-
-### Answer
-
-```text
-4 KB
-```
-
-Because an entire cluster is allocated even though only 1 KB of data exists.
-
----
 
 # Key Takeaways
 
